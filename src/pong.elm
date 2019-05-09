@@ -1,6 +1,7 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
+import Browser.Events
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import Keyboard exposing (Key(..))
@@ -58,6 +59,7 @@ type Msg
     | Decrement
     | Scale
     | KeyMsg Keyboard.Msg
+    | Tick
 
 
 updatePlayerPos : (Vec -> Vec) -> Player -> Player
@@ -80,6 +82,9 @@ update msg model =
         KeyMsg keyMsg ->
             ( { model | pressedKeys = Keyboard.update keyMsg model.pressedKeys }, Cmd.none )
 
+        Tick ->
+            ( model, Cmd.none )
+
 
 
 -- SUBSCRIPTIONS
@@ -89,6 +94,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Sub.map KeyMsg Keyboard.subscriptions
+        , Browser.Events.onAnimationFrame (\_ -> Tick)
         ]
 
 
