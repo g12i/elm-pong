@@ -14,13 +14,33 @@ main =
 -- MODEL
 
 
+type alias Player =
+    { pos : Vec
+    , score : Int
+    }
+
+
+type alias Ball =
+    { pos : Vec
+    , dir : Vec
+    }
+
+
 type alias Model =
-    Vec
+    { player1 : Player
+    , player2 : Player
+    , ball : Ball
+    , isRoundFinished : Bool
+    }
 
 
 init : Model
 init =
-    vec 0 0
+    { player1 = { pos = vec 0 0, score = 0 }
+    , player2 = { pos = vec 0 0, score = 0 }
+    , ball = { pos = vec 0 0, dir = vec 0 0 }
+    , isRoundFinished = False
+    }
 
 
 
@@ -33,17 +53,22 @@ type Msg
     | Scale
 
 
+updatePlayerPos : (Vec -> Vec) -> Player -> Player
+updatePlayerPos operation player =
+    { player | pos = operation player.pos }
+
+
 update : Msg -> Model -> Model
 update msg model =
     case msg of
         Increment ->
-            add (vec 1 0) model
+            { model | player1 = updatePlayerPos (add (vec 1 0)) model.player1 }
 
         Decrement ->
-            sub (vec 1 0) model
+            { model | player1 = updatePlayerPos (sub (vec 1 0)) model.player1 }
 
         Scale ->
-            scale 1.1 model
+            { model | player1 = updatePlayerPos (scale 1.1) model.player1 }
 
 
 
