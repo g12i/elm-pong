@@ -55,10 +55,7 @@ init _ =
 
 
 type Msg
-    = Increment
-    | Decrement
-    | Scale
-    | KeyMsg Keyboard.Msg
+    = KeyMsg Keyboard.Msg
     | Tick
 
 
@@ -70,20 +67,24 @@ updatePlayerPos operation player =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Increment ->
-            ( { model | player1 = updatePlayerPos (add (vec 1 0)) model.player1 }, Cmd.none )
-
-        Decrement ->
-            ( { model | player1 = updatePlayerPos (sub (vec 1 0)) model.player1 }, Cmd.none )
-
-        Scale ->
-            ( { model | player1 = updatePlayerPos (scale 1.1) model.player1 }, Cmd.none )
-
         KeyMsg keyMsg ->
             ( { model | pressedKeys = Keyboard.update keyMsg model.pressedKeys }, Cmd.none )
 
         Tick ->
-            ( model, Cmd.none )
+            let
+                arrows =
+                    Keyboard.Arrows.arrows model.pressedKeys
+
+                wasd =
+                    Keyboard.Arrows.wasd model.pressedKeys
+
+                newPlayer1 =
+                    updatePlayerPos (add (vec 0 (toFloat arrows.y))) model.player1
+
+                newPlayer2 =
+                    updatePlayerPos (add (vec 0 (toFloat wasd.y))) model.player2
+            in
+            ( { model | player1 = newPlayer1, player2 = newPlayer2 }, Cmd.none )
 
 
 
@@ -105,8 +106,5 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     div []
-        [ button [ onClick Decrement ] [ text "-" ]
-        , div [] [ text (Debug.toString model) ]
-        , button [ onClick Increment ] [ text "+" ]
-        , button [ onClick Scale ] [ text "Scale" ]
+        [ div [] [ text (Debug.toString model) ]
         ]
