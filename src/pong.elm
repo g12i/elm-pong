@@ -42,7 +42,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { player1 = { pos = vec 0 0, score = 0 }
       , player2 = { pos = vec 0 0, score = 0 }
-      , ball = { pos = vec 0 0, dir = vec 0 0 }
+      , ball = { pos = vec 0 0, dir = vec 2 1 }
       , isRoundFinished = False
       , pressedKeys = []
       }
@@ -64,6 +64,11 @@ updatePlayerPos operation player =
     { player | pos = operation player.pos }
 
 
+updateBall : Ball -> Ball
+updateBall ball =
+    { ball | pos = add ball.pos ball.dir }
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -83,8 +88,11 @@ update msg model =
 
                 newPlayer2 =
                     updatePlayerPos (add (vec 0 (toFloat wasd.y))) model.player2
+
+                newBall =
+                    updateBall model.ball
             in
-            ( { model | player1 = newPlayer1, player2 = newPlayer2 }, Cmd.none )
+            ( { model | player1 = newPlayer1, player2 = newPlayer2, ball = newBall }, Cmd.none )
 
 
 
