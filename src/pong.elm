@@ -19,7 +19,7 @@ boardWidth =
 
 
 boardHeight =
-    600
+    500
 
 
 paddleWidth =
@@ -28,6 +28,10 @@ paddleWidth =
 
 paddleHeight =
     50
+
+
+ballSize =
+    5
 
 
 
@@ -81,9 +85,55 @@ updatePlayerPos operation player =
     { player | pos = operation player.pos }
 
 
-updateBall : Ball -> Ball
-updateBall ball =
-    { ball | pos = add ball.pos ball.dir }
+detectPaddleColision : Ball -> Player -> Bool
+detectPaddleColision ball player =
+    let
+        ballAbsX =
+            abs (getX ball.pos)
+
+        xExceeds =
+            ballAbsX >= (boardWidth / 2) - paddleWidth
+
+        ballTop =
+            getY ball.pos + (ballSize / 2)
+
+        ballBottom =
+            getY ball.pos - (ballSize / 2)
+
+        paddleTop =
+            getY player.pos + (paddleHeight / 2)
+
+        paddleBottom =
+            getY player.pos - (paddleHeight / 2)
+
+        yWithinPaddle =
+            ballBottom >= paddleBottom && ballTop <= paddleTop
+    in
+    xExceeds && yWithinPaddle
+
+
+updateBall : Ball -> Player -> Player -> Ball
+updateBall ball player1 player2 =
+    let
+        collidesWithPlayer =
+            detectPaddleColision ball
+
+        collidesWithWall =
+            abs (getY ball.pos) >= (boardHeight / 2)
+
+        ballDir =
+            if collidesWithWall then
+                invertY ball.dir
+
+            else if collidesWithPlayer player1 || collidesWithPlayer player2 then
+                ball.dir
+                    |> invertX
+                    |> scale 1.1
+
+            else
+                ball.dir
+    in
+    { ball | dir = ballDir, pos = add ball.pos ballDir }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -101,13 +151,13 @@ update msg model =
                     Keyboard.Arrows.wasd model.pressedKeys
 
                 newPlayer1 =
-                    updatePlayerPos (add (vec 0 (toFloat arrows.y))) model.player1
+                    updatePlayerPos (add (vec 0 (-1.75 * toFloat wasd.y))) model.player1
 
                 newPlayer2 =
-                    updatePlayerPos (add (vec 0 (toFloat wasd.y))) model.player2
+                    updatePlayerPos (add (vec 0 (-1.75 * toFloat arrows.y))) model.player2
 
                 newBall =
-                    updateBall model.ball
+                    updateBall model.ball model.player1 model.player2
             in
             ( { model | player1 = newPlayer1, player2 = newPlayer2, ball = newBall }, Cmd.none )
 
@@ -170,7 +220,7 @@ view model =
                 [ fill "red"
                 , cx (String.fromFloat (getX model.ball.pos))
                 , cy (String.fromFloat (getY model.ball.pos))
-                , r "5"
+                , r (String.fromFloat ballSize)
                 ]
                 []
             , paddleView model.player1 0
