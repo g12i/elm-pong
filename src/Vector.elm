@@ -1,4 +1,4 @@
-module Vector exposing (Vec, add, getX, getY, scale, setX, setY, sub, vec)
+module Vector exposing (Vec, add, getX, getY, invertX, invertY, scale, setX, setY, sub, vec)
 
 
 type alias Vec =
@@ -45,3 +45,13 @@ sub b a =
 scale : Float -> Vec -> Vec
 scale k a =
     { x = a.x * k, y = a.y * k }
+
+
+invertX : Vec -> Vec
+invertX a =
+    { x = a.x * -1, y = a.y }
+
+
+invertY : Vec -> Vec
+invertY a =
+    { x = a.x, y = a.y * -1 }

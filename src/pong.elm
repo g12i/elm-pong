@@ -2,15 +2,32 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Events
-import Html exposing (Html, button, div, text)
-import Html.Events exposing (onClick)
+import Html exposing (Html)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
-import Vector exposing (Vec, add, scale, sub, vec)
+import Svg exposing (circle, rect, svg)
+import Svg.Attributes exposing (..)
+import Vector exposing (Vec, add, getX, getY, invertX, invertY, scale, sub, vec)
 
 
 main =
     Browser.element { init = init, update = update, subscriptions = subscriptions, view = view }
+
+
+boardWidth =
+    800
+
+
+boardHeight =
+    600
+
+
+paddleWidth =
+    20
+
+
+paddleHeight =
+    50
 
 
 
@@ -40,8 +57,8 @@ type alias Model =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { player1 = { pos = vec 0 0, score = 0 }
-      , player2 = { pos = vec 0 0, score = 0 }
+    ( { player1 = { pos = vec (boardWidth / -2) 0, score = 0 }
+      , player2 = { pos = vec (boardWidth / 2) 0, score = 0 }
       , ball = { pos = vec 0 0, dir = vec 2 1 }
       , isRoundFinished = False
       , pressedKeys = []
@@ -111,8 +128,50 @@ subscriptions model =
 -- VIEW
 
 
+paddleView : Player -> Float -> Html Msg
+paddleView player translateX =
+    rect
+        [ width (String.fromInt paddleWidth)
+        , height (String.fromInt paddleHeight)
+        , x (String.fromFloat (getX player.pos))
+        , y (String.fromFloat (getY player.pos))
+        , fill "yellow"
+        , style ("transform: translate(" ++ String.fromFloat translateX ++ "px, " ++ String.fromFloat (paddleHeight / -2) ++ "px);")
+        ]
+        []
+
+
 view : Model -> Html Msg
 view model =
-    div []
-        [ div [] [ text (Debug.toString model) ]
+    svg
+        [ width (String.fromInt boardWidth)
+        , height (String.fromInt boardHeight)
+        , viewBox
+            (String.concat
+                (List.map
+                    (\a -> a ++ " ")
+                    [ String.fromFloat (boardWidth / -2)
+                    , String.fromFloat (boardHeight / -2)
+                    , String.fromInt boardWidth
+                    , String.fromInt boardHeight
+                    ]
+                )
+            )
+        ]
+        [ rect
+            [ width (String.fromInt boardWidth)
+            , height (String.fromInt boardHeight)
+            , x (String.fromFloat (boardWidth / -2))
+            , y (String.fromFloat (boardHeight / -2))
+            ]
+            []
+        , circle
+            [ fill "red"
+            , cx (String.fromFloat (getX model.ball.pos))
+            , cy (String.fromFloat (getY model.ball.pos))
+            , r "5"
+            ]
+            []
+        , paddleView model.player1 0
+        , paddleView model.player2 (paddleWidth * -1)
         ]
