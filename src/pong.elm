@@ -82,7 +82,31 @@ type Msg
 
 updatePlayerPos : (Vec -> Vec) -> Player -> Player
 updatePlayerPos operation player =
-    { player | pos = operation player.pos }
+    let
+        dirSign =
+            if getY player.pos > 0 then
+                1
+
+            else
+                -1
+
+        newPos =
+            operation player.pos
+
+        halfBoardHeight =
+            boardHeight / 2
+
+        halfPaddleHeight =
+            paddleHeight / 2
+
+        newPosCapped =
+            if abs (getY newPos) + halfPaddleHeight > halfBoardHeight then
+                vec (getX newPos) ((halfBoardHeight - halfPaddleHeight) * dirSign)
+
+            else
+                newPos
+    in
+    { player | pos = newPosCapped }
 
 
 detectPaddleColision : Ball -> Player -> Bool
