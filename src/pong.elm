@@ -2,7 +2,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Events
-import Html exposing (Html)
+import Html exposing (Html, div, pre)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
 import Svg exposing (circle, rect, svg)
@@ -143,35 +143,41 @@ paddleView player translateX =
 
 view : Model -> Html Msg
 view model =
-    svg
-        [ width (String.fromInt boardWidth)
-        , height (String.fromInt boardHeight)
-        , viewBox
-            (String.concat
-                (List.map
-                    (\a -> a ++ " ")
-                    [ String.fromFloat (boardWidth / -2)
-                    , String.fromFloat (boardHeight / -2)
-                    , String.fromInt boardWidth
-                    , String.fromInt boardHeight
-                    ]
-                )
-            )
-        ]
-        [ rect
+    div []
+        [ svg
             [ width (String.fromInt boardWidth)
             , height (String.fromInt boardHeight)
-            , x (String.fromFloat (boardWidth / -2))
-            , y (String.fromFloat (boardHeight / -2))
+            , viewBox
+                (String.concat
+                    (List.map
+                        (\a -> a ++ " ")
+                        [ String.fromFloat (boardWidth / -2)
+                        , String.fromFloat (boardHeight / -2)
+                        , String.fromInt boardWidth
+                        , String.fromInt boardHeight
+                        ]
+                    )
+                )
             ]
-            []
-        , circle
-            [ fill "red"
-            , cx (String.fromFloat (getX model.ball.pos))
-            , cy (String.fromFloat (getY model.ball.pos))
-            , r "5"
+            [ rect
+                [ width (String.fromInt boardWidth)
+                , height (String.fromInt boardHeight)
+                , x (String.fromFloat (boardWidth / -2))
+                , y (String.fromFloat (boardHeight / -2))
+                ]
+                []
+            , circle
+                [ fill "red"
+                , cx (String.fromFloat (getX model.ball.pos))
+                , cy (String.fromFloat (getY model.ball.pos))
+                , r "5"
+                ]
+                []
+            , paddleView model.player1 0
+            , paddleView model.player2 (paddleWidth * -1)
             ]
-            []
-        , paddleView model.player1 0
-        , paddleView model.player2 (paddleWidth * -1)
+        , pre
+            [ style "max-width: 560px; white-space: pre-wrap"
+            ]
+            [ Html.text (Debug.toString model) ]
         ]
