@@ -164,10 +164,15 @@ updateBall ball player1 player2 =
             if collidesWithWall then
                 invertY ball.dir
 
-            else if collidesWithPlayer player1 || collidesWithPlayer player2 then
-                ball.dir
-                    |> invertX
-                    |> scale 1.1
+            else if collidesWithPlayer player1 then
+                sub player1.pos ball.pos
+                    |> normalize
+                    |> scale 2.5
+
+            else if collidesWithPlayer player2 then
+                sub player2.pos ball.pos
+                    |> normalize
+                    |> scale 2.5
 
             else
                 ball.dir
