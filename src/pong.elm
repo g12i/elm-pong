@@ -7,7 +7,7 @@ import Keyboard exposing (Key(..))
 import Keyboard.Arrows
 import Svg exposing (circle, line, rect, svg)
 import Svg.Attributes exposing (..)
-import Vector exposing (Vec, add, getX, getY, invertX, invertY, scale, sub, vec)
+import Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, scale, sub, vec)
 
 
 main =
@@ -32,6 +32,10 @@ paddleHeight =
 
 ballSize =
     5
+
+
+paddleMovementFactor =
+    -2.25
 
 
 
@@ -59,16 +63,22 @@ type alias Model =
     }
 
 
+initModel : () -> Model
+initModel _ =
+    { player1 = { pos = vec ((boardWidth / -2) + paddleWidth / 2) 0, score = 0 }
+    , player2 = { pos = vec ((boardWidth / 2) - paddleWidth / 2) 0, score = 0 }
+    , ball =
+        { pos = vec 0 0
+        , dir = vec 2 1 |> normalize |> scale 2.5
+        }
+    , isRoundFinished = False
+    , pressedKeys = []
+    }
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { player1 = { pos = vec (boardWidth / -2) 0, score = 0 }
-      , player2 = { pos = vec (boardWidth / 2) 0, score = 0 }
-      , ball = { pos = vec 0 0, dir = vec 2 1 }
-      , isRoundFinished = False
-      , pressedKeys = []
-      }
-    , Cmd.none
-    )
+    ( initModel (), Cmd.none )
 
 
 
@@ -107,6 +117,11 @@ updatePlayerPos operation player =
                 newPos
     in
     { player | pos = newPosCapped }
+
+
+gameFinished : Ball -> Bool
+gameFinished ball =
+    abs (getX ball.pos) + (ballSize / 2) >= (boardWidth / 2)
 
 
 detectPaddleColision : Ball -> Player -> Bool
@@ -167,23 +182,31 @@ update msg model =
             ( { model | pressedKeys = Keyboard.update keyMsg model.pressedKeys }, Cmd.none )
 
         Tick ->
-            let
-                arrows =
-                    Keyboard.Arrows.arrows model.pressedKeys
+            if gameFinished model.ball then
+                let
+                    newModel =
+                        initModel ()
+                in
+                ( newModel, Cmd.none )
 
-                wasd =
-                    Keyboard.Arrows.wasd model.pressedKeys
+            else
+                let
+                    arrows =
+                        Keyboard.Arrows.arrows model.pressedKeys
 
-                newPlayer1 =
-                    updatePlayerPos (add (vec 0 (-1.75 * toFloat wasd.y))) model.player1
+                    wasd =
+                        Keyboard.Arrows.wasd model.pressedKeys
 
-                newPlayer2 =
-                    updatePlayerPos (add (vec 0 (-1.75 * toFloat arrows.y))) model.player2
+                    newPlayer1 =
+                        updatePlayerPos (add (vec 0 (paddleMovementFactor * toFloat wasd.y))) model.player1
 
-                newBall =
-                    updateBall model.ball model.player1 model.player2
-            in
-            ( { model | player1 = newPlayer1, player2 = newPlayer2, ball = newBall }, Cmd.none )
+                    newPlayer2 =
+                        updatePlayerPos (add (vec 0 (paddleMovementFactor * toFloat arrows.y))) model.player2
+
+                    newBall =
+                        updateBall model.ball model.player1 model.player2
+                in
+                ( { model | player1 = newPlayer1, player2 = newPlayer2, ball = newBall }, Cmd.none )
 
 
 

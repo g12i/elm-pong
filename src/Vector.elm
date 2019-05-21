@@ -1,4 +1,4 @@
-module Vector exposing (Vec, add, getX, getY, invertX, invertY, scale, setX, setY, sub, vec)
+module Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, scale, setX, setY, sub, vec)
 
 
 type alias Vec =
@@ -55,3 +55,18 @@ invertX a =
 invertY : Vec -> Vec
 invertY a =
     { x = a.x, y = a.y * -1 }
+
+
+normalize : Vec -> Vec
+normalize a =
+    let
+        x =
+            getX a
+
+        y =
+            getY a
+
+        s =
+            sqrt ((x * x) + (y * y))
+    in
+    { x = x / s, y = y / s }
