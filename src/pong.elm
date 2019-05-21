@@ -5,7 +5,7 @@ import Browser.Events
 import Html exposing (Html, div, pre)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
-import Svg exposing (circle, rect, svg)
+import Svg exposing (circle, line, rect, svg)
 import Svg.Attributes exposing (..)
 import Vector exposing (Vec, add, getX, getY, invertX, invertY, scale, sub, vec)
 
@@ -202,15 +202,15 @@ subscriptions model =
 -- VIEW
 
 
-paddleView : Player -> Float -> Html Msg
-paddleView player translateX =
+paddleView : Player -> String -> Html Msg
+paddleView player fillC =
     rect
         [ width (String.fromInt paddleWidth)
         , height (String.fromInt paddleHeight)
         , x (String.fromFloat (getX player.pos))
         , y (String.fromFloat (getY player.pos))
-        , fill "yellow"
-        , style ("transform: translate(" ++ String.fromFloat translateX ++ "px, " ++ String.fromFloat (paddleHeight / -2) ++ "px);")
+        , fill fillC
+        , style ("transform: translate(" ++ String.fromFloat (paddleWidth / -2) ++ "px, " ++ String.fromFloat (paddleHeight / -2) ++ "px);")
         ]
         []
 
@@ -247,8 +247,51 @@ view model =
                 , r (String.fromFloat ballSize)
                 ]
                 []
-            , paddleView model.player1 0
-            , paddleView model.player2 (paddleWidth * -1)
+            , paddleView model.player1 "red"
+            , paddleView model.player2 "green"
+            , Svg.text_
+                [ fill "white"
+                , x (String.fromFloat (boardWidth / -2))
+                , y (String.fromFloat (boardHeight / -2))
+                , style "transform: translate(8px,18px)"
+                ]
+                [ Svg.text (String.fromInt model.player1.score) ]
+            , Svg.text_
+                [ fill "white"
+                ]
+                [ Svg.text (String.fromInt model.player2.score) ]
+            , line
+                [ x1 "0"
+                , y1 "0"
+                , stroke "white"
+                , x2 (String.fromFloat (getX model.ball.pos))
+                , y2 (String.fromFloat (getY model.ball.pos))
+                ]
+                []
+            , line
+                [ x1 (String.fromFloat (getX model.ball.pos))
+                , y1 (String.fromFloat (getY model.ball.pos))
+                , stroke "yellow"
+                , x2 (String.fromFloat (getX (add model.ball.pos model.ball.dir)))
+                , y2 (String.fromFloat (getY (add model.ball.pos model.ball.dir)))
+                ]
+                []
+            , line
+                [ x1 "0"
+                , y1 "0"
+                , stroke "green"
+                , x2 (String.fromFloat (getX model.player1.pos))
+                , y2 (String.fromFloat (getY model.player1.pos))
+                ]
+                []
+            , line
+                [ x1 "0"
+                , y1 "0"
+                , stroke "blue"
+                , x2 (String.fromFloat (getX model.player2.pos))
+                , y2 (String.fromFloat (getY model.player2.pos))
+                ]
+                []
             ]
         , pre
             [ style "max-width: 560px; white-space: pre-wrap"
