@@ -162,6 +162,30 @@ detectPaddleColision ball player =
     xHitsPaddle && yWithinPaddle
 
 
+reflectAgainstPlayer : Ball -> Player -> Vec
+reflectAgainstPlayer ball player =
+    let
+        ballPos =
+            ball.pos
+
+        ballDiameter =
+            vec (ballSize / 2) (ballSize / 2)
+
+        paddleDiameter =
+            vec (paddleWidth / 2) (paddleHeight / 2)
+
+        ballCenter =
+            add ballPos ballDiameter
+
+        paddleCenter =
+            add player.pos paddleDiameter
+
+        newDir =
+            sub paddleCenter ballCenter |> normalize |> scale 2.5
+    in
+    newDir
+
+
 updateBall : Ball -> Player -> Player -> Ball
 updateBall ball player1 player2 =
     let
@@ -179,10 +203,10 @@ updateBall ball player1 player2 =
                 invertY ball.dir
 
             else if collidesWithPlayer player1 then
-                invertX ball.dir
+                reflectAgainstPlayer ball player1
 
             else if collidesWithPlayer player2 then
-                invertX ball.dir
+                reflectAgainstPlayer ball player2
 
             else
                 ball.dir
