@@ -7,7 +7,7 @@ import Keyboard exposing (Key(..))
 import Keyboard.Arrows
 import Svg exposing (circle, line, rect, svg)
 import Svg.Attributes exposing (..)
-import Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, scale, sub, vec)
+import Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, scale, setY, sub, vec)
 
 
 main =
@@ -31,7 +31,7 @@ paddleHeight =
 
 
 ballSize =
-    5
+    10
 
 
 paddleMovementFactor =
@@ -63,12 +63,16 @@ type alias Model =
     }
 
 
+midY =
+    (boardHeight / 2) - (paddleHeight / 2)
+
+
 initModel : () -> Model
 initModel _ =
-    { player1 = { pos = vec ((boardWidth / -2) + paddleWidth / 2) 0, score = 0 }
-    , player2 = { pos = vec ((boardWidth / 2) - paddleWidth / 2) 0, score = 0 }
+    { player1 = { pos = vec 0 midY, score = 0 }
+    , player2 = { pos = vec (boardWidth - paddleWidth) midY, score = 0 }
     , ball =
-        { pos = vec 0 0
+        { pos = vec ((boardWidth / 2) - (ballSize / 2)) ((boardHeight / 2) - (ballSize / 2))
         , dir = vec 2 1 |> normalize |> scale 2.5
         }
     , isRoundFinished = False
@@ -110,8 +114,11 @@ updatePlayerPos operation player =
             paddleHeight / 2
 
         newPosCapped =
-            if abs (getY newPos) + halfPaddleHeight > halfBoardHeight then
-                vec (getX newPos) ((halfBoardHeight - halfPaddleHeight) * dirSign)
+            if getY newPos <= 0 then
+                setY 0 newPos
+
+            else if getY newPos + paddleHeight >= boardHeight then
+                setY (boardHeight - paddleHeight) newPos
 
             else
                 newPos
@@ -121,34 +128,38 @@ updatePlayerPos operation player =
 
 gameFinished : Ball -> Bool
 gameFinished ball =
-    abs (getX ball.pos) + (ballSize / 2) >= (boardWidth / 2)
+    let
+        ballX =
+            getX ball.pos
+    in
+    ballX + ballSize < 0 || ballX > boardWidth
 
 
 detectPaddleColision : Ball -> Player -> Bool
 detectPaddleColision ball player =
     let
-        ballAbsX =
-            abs (getX ball.pos)
+        ballX =
+            getX ball.pos
 
-        xExceeds =
-            ballAbsX >= (boardWidth / 2) - paddleWidth
+        xHitsPaddle =
+            ballX <= paddleWidth || ballX + ballSize >= boardWidth - paddleWidth
 
         ballTop =
-            getY ball.pos + (ballSize / 2)
+            getY ball.pos
 
         ballBottom =
-            getY ball.pos - (ballSize / 2)
+            getY ball.pos + ballSize
 
         paddleTop =
-            getY player.pos + (paddleHeight / 2)
+            getY player.pos
 
         paddleBottom =
-            getY player.pos - (paddleHeight / 2)
+            getY player.pos + paddleHeight
 
         yWithinPaddle =
-            ballBottom >= paddleBottom && ballTop <= paddleTop
+            ballBottom >= paddleTop && ballTop <= paddleBottom
     in
-    xExceeds && yWithinPaddle
+    xHitsPaddle && yWithinPaddle
 
 
 updateBall : Ball -> Player -> Player -> Ball
@@ -157,22 +168,21 @@ updateBall ball player1 player2 =
         collidesWithPlayer =
             detectPaddleColision ball
 
+        ballY =
+            getY ball.pos
+
         collidesWithWall =
-            abs (getY ball.pos) >= (boardHeight / 2)
+            ballY <= 0 || ballY + ballSize >= boardHeight
 
         ballDir =
             if collidesWithWall then
                 invertY ball.dir
 
             else if collidesWithPlayer player1 then
-                sub player1.pos ball.pos
-                    |> normalize
-                    |> scale 2.5
+                invertX ball.dir
 
             else if collidesWithPlayer player2 then
-                sub player2.pos ball.pos
-                    |> normalize
-                    |> scale 2.5
+                invertX ball.dir
 
             else
                 ball.dir
@@ -230,17 +240,13 @@ subscriptions model =
 -- VIEW
 
 
-paddleView : Player -> String -> Html Msg
-paddleView player fillC =
-    rect
-        [ width (String.fromInt paddleWidth)
-        , height (String.fromInt paddleHeight)
-        , x (String.fromFloat (getX player.pos))
-        , y (String.fromFloat (getY player.pos))
-        , fill fillC
-        , style ("transform: translate(" ++ String.fromFloat (paddleWidth / -2) ++ "px, " ++ String.fromFloat (paddleHeight / -2) ++ "px);")
-        ]
-        []
+join : List Int -> String
+join list =
+    String.concat
+        (List.map
+            (\a -> String.fromInt a ++ " ")
+            list
+        )
 
 
 view : Model -> Html Msg
@@ -250,33 +256,18 @@ view model =
             [ width (String.fromInt boardWidth)
             , height (String.fromInt boardHeight)
             , viewBox
-                (String.concat
-                    (List.map
-                        (\a -> a ++ " ")
-                        [ String.fromFloat (boardWidth / -2)
-                        , String.fromFloat (boardHeight / -2)
-                        , String.fromInt boardWidth
-                        , String.fromInt boardHeight
-                        ]
-                    )
+                (join
+                    [ 0
+                    , 0
+                    , boardWidth
+                    , boardHeight
+                    ]
                 )
             ]
-            [ rect
-                [ width (String.fromInt boardWidth)
-                , height (String.fromInt boardHeight)
-                , x (String.fromFloat (boardWidth / -2))
-                , y (String.fromFloat (boardHeight / -2))
-                ]
-                []
-            , circle
-                [ fill "red"
-                , cx (String.fromFloat (getX model.ball.pos))
-                , cy (String.fromFloat (getY model.ball.pos))
-                , r (String.fromFloat ballSize)
-                ]
-                []
-            , paddleView model.player1 "red"
-            , paddleView model.player2 "green"
+            [ renderBackground
+            , renderBall model.ball.pos
+            , renderPaddle model.player1
+            , renderPaddle model.player2
             , Svg.text_
                 [ fill "white"
                 , x (String.fromFloat (boardWidth / -2))
@@ -326,3 +317,37 @@ view model =
             ]
             [ Html.text (Debug.toString model) ]
         ]
+
+
+renderBackground =
+    rect
+        [ width (String.fromInt boardWidth)
+        , height (String.fromInt boardHeight)
+        , x (String.fromInt 0)
+        , y (String.fromInt 0)
+        ]
+        []
+
+
+renderBall : Vec -> Html Msg
+renderBall pos =
+    rect
+        [ width (String.fromInt ballSize)
+        , height (String.fromInt ballSize)
+        , x (String.fromFloat (getX pos))
+        , y (String.fromFloat (getY pos))
+        , fill "red"
+        ]
+        []
+
+
+renderPaddle : Player -> Html Msg
+renderPaddle player =
+    rect
+        [ width (String.fromInt paddleWidth)
+        , height (String.fromInt paddleHeight)
+        , x (String.fromFloat (getX player.pos))
+        , y (String.fromFloat (getY player.pos))
+        , fill "white"
+        ]
+        []
