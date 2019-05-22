@@ -303,43 +303,7 @@ view model =
                 [ fill "white"
                 ]
                 [ Svg.text (String.fromInt model.player2.score) ]
-            , line
-                [ x1 "0"
-                , y1 "0"
-                , stroke "white"
-                , x2 (String.fromFloat (getX model.ball.pos))
-                , y2 (String.fromFloat (getY model.ball.pos))
-                ]
-                []
-            , line
-                [ x1 (String.fromFloat (getX model.ball.pos))
-                , y1 (String.fromFloat (getY model.ball.pos))
-                , stroke "yellow"
-                , x2 (String.fromFloat (getX (add model.ball.pos model.ball.dir)))
-                , y2 (String.fromFloat (getY (add model.ball.pos model.ball.dir)))
-                ]
-                []
-            , line
-                [ x1 "0"
-                , y1 "0"
-                , stroke "green"
-                , x2 (String.fromFloat (getX model.player1.pos))
-                , y2 (String.fromFloat (getY model.player1.pos))
-                ]
-                []
-            , line
-                [ x1 "0"
-                , y1 "0"
-                , stroke "blue"
-                , x2 (String.fromFloat (getX model.player2.pos))
-                , y2 (String.fromFloat (getY model.player2.pos))
-                ]
-                []
             ]
-        , pre
-            [ style "max-width: 560px; white-space: pre-wrap"
-            ]
-            [ Html.text (Debug.toString model) ]
         ]
 
 
