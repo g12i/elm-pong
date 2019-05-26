@@ -45,6 +45,7 @@ paddleMovementFactor =
 type alias Player =
     { pos : Vec
     , score : Int
+    , id : Int
     }
 
 
@@ -69,8 +70,8 @@ midY =
 
 initModel : () -> Model
 initModel _ =
-    { player1 = { pos = vec 0 midY, score = 0 }
-    , player2 = { pos = vec (boardWidth - paddleWidth) midY, score = 0 }
+    { player1 = { pos = vec 0 midY, score = 0, id = 1 }
+    , player2 = { pos = vec (boardWidth - paddleWidth) midY, score = 0, id = 2 }
     , ball =
         { pos = vec ((boardWidth / 2) - (ballSize / 2)) ((boardHeight / 2) - (ballSize / 2))
         , dir = vec 2 1 |> normalize |> scale 2.5
@@ -125,13 +126,24 @@ updatePlayerPos operation player =
     { player | pos = capPlayerPos newPos }
 
 
-gameFinished : Ball -> Bool
-gameFinished ball =
+isGameFinished : Model -> Maybe Int
+isGameFinished model =
     let
         ballX =
-            getX ball.pos
+            getX model.ball.pos
+
+        finished =
+            ballX + ballSize < 0 || ballX > boardWidth
     in
-    ballX + ballSize < 0 || ballX > boardWidth
+    if finished then
+        if ballX > 0 then
+            Just model.player1.id
+
+        else
+            Just model.player2.id
+
+    else
+        Nothing
 
 
 detectPaddleColision : Ball -> Player -> Bool
@@ -220,31 +232,52 @@ update msg model =
             ( { model | pressedKeys = Keyboard.update keyMsg model.pressedKeys }, Cmd.none )
 
         Tick ->
-            if gameFinished model.ball then
-                let
-                    newModel =
-                        initModel ()
-                in
-                ( newModel, Cmd.none )
+            case isGameFinished model of
+                Just scoredPlayerId ->
+                    let
+                        newModel =
+                            initModel ()
 
-            else
-                let
-                    arrows =
-                        Keyboard.Arrows.arrows model.pressedKeys
+                        updateIfScored : Player -> Int
+                        updateIfScored player =
+                            if scoredPlayerId == player.id then
+                                player.score + 1
 
-                    wasd =
-                        Keyboard.Arrows.wasd model.pressedKeys
+                            else
+                                player.score
 
-                    newPlayer1 =
-                        updatePlayerPos (add (vec 0 (paddleMovementFactor * toFloat wasd.y))) model.player1
+                        newPlayer1 =
+                            { pos = newModel.player1.pos
+                            , score = updateIfScored model.player1
+                            , id = model.player1.id
+                            }
 
-                    newPlayer2 =
-                        updatePlayerPos (add (vec 0 (paddleMovementFactor * toFloat arrows.y))) model.player2
+                        newPlayer2 =
+                            { pos = newModel.player2.pos
+                            , score = updateIfScored model.player2
+                            , id = model.player2.id
+                            }
+                    in
+                    ( { newModel | player1 = newPlayer1, player2 = newPlayer2 }, Cmd.none )
 
-                    newBall =
-                        updateBall model.ball model.player1 model.player2
-                in
-                ( { model | player1 = newPlayer1, player2 = newPlayer2, ball = newBall }, Cmd.none )
+                Nothing ->
+                    let
+                        arrows =
+                            Keyboard.Arrows.arrows model.pressedKeys
+
+                        wasd =
+                            Keyboard.Arrows.wasd model.pressedKeys
+
+                        newPlayer1 =
+                            updatePlayerPos (add (vec 0 (paddleMovementFactor * toFloat wasd.y))) model.player1
+
+                        newPlayer2 =
+                            updatePlayerPos (add (vec 0 (paddleMovementFactor * toFloat arrows.y))) model.player2
+
+                        newBall =
+                            updateBall model.ball model.player1 model.player2
+                    in
+                    ( { model | player1 = newPlayer1, player2 = newPlayer2, ball = newBall }, Cmd.none )
 
 
 
@@ -291,17 +324,8 @@ view model =
             , renderBall model.ball.pos
             , renderPaddle model.player1
             , renderPaddle model.player2
-            , Svg.text_
-                [ fill "white"
-                , x (String.fromFloat (boardWidth / -2))
-                , y (String.fromFloat (boardHeight / -2))
-                , style "transform: translate(8px,18px)"
-                ]
-                [ Svg.text (String.fromInt model.player1.score) ]
-            , Svg.text_
-                [ fill "white"
-                ]
-                [ Svg.text (String.fromInt model.player2.score) ]
+            , renderScore "50" model.player1
+            , renderScore (String.fromFloat (boardWidth - 50)) model.player2
             ]
         ]
 
@@ -338,3 +362,13 @@ renderPaddle player =
         , fill "white"
         ]
         []
+
+
+renderScore : String -> Player -> Html Msg
+renderScore xCoord player =
+    Svg.text_
+        [ fill "white"
+        , x xCoord
+        , y "50"
+        ]
+        [ Svg.text (String.fromInt player.score) ]
