@@ -5,7 +5,7 @@ import Browser.Events
 import Html exposing (Html, div, pre)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
-import Svg exposing (circle, line, rect, svg)
+import Svg exposing (circle, rect, svg)
 import Svg.Attributes exposing (..)
 import Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, scale, setY, sub, vec)
 
@@ -94,36 +94,35 @@ type Msg
     | Tick
 
 
+capPlayerPos : Vec -> Vec
+capPlayerPos newPos =
+    let
+        min =
+            0
+
+        max =
+            boardHeight - paddleHeight
+
+        y =
+            getY newPos
+    in
+    if y <= min then
+        setY min newPos
+
+    else if y >= max then
+        setY max newPos
+
+    else
+        newPos
+
+
 updatePlayerPos : (Vec -> Vec) -> Player -> Player
 updatePlayerPos operation player =
     let
-        dirSign =
-            if getY player.pos > 0 then
-                1
-
-            else
-                -1
-
         newPos =
             operation player.pos
-
-        halfBoardHeight =
-            boardHeight / 2
-
-        halfPaddleHeight =
-            paddleHeight / 2
-
-        newPosCapped =
-            if getY newPos <= 0 then
-                setY 0 newPos
-
-            else if getY newPos + paddleHeight >= boardHeight then
-                setY (boardHeight - paddleHeight) newPos
-
-            else
-                newPos
     in
-    { player | pos = newPosCapped }
+    { player | pos = capPlayerPos newPos }
 
 
 gameFinished : Ball -> Bool
