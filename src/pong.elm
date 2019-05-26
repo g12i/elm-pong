@@ -2,6 +2,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Events
+import Constants
 import Html exposing (Html, div, pre)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
@@ -14,30 +15,6 @@ main =
     Browser.element { init = init, update = update, subscriptions = subscriptions, view = view }
 
 
-boardWidth =
-    800
-
-
-boardHeight =
-    500
-
-
-paddleWidth =
-    20
-
-
-paddleHeight =
-    50
-
-
-ballSize =
-    10
-
-
-paddleMovementFactor =
-    -2.25
-
-
 
 -- MODEL
 
@@ -45,7 +22,7 @@ paddleMovementFactor =
 type alias Player =
     { pos : Vec
     , score : Int
-    , id : Int
+    , id : String
     }
 
 
@@ -59,24 +36,36 @@ type alias Model =
     { player1 : Player
     , player2 : Player
     , ball : Ball
-    , isRoundFinished : Bool
     , pressedKeys : List Key
     }
 
 
-midY =
-    (boardHeight / 2) - (paddleHeight / 2)
-
-
 initModel : () -> Model
 initModel _ =
-    { player1 = { pos = vec 0 midY, score = 0, id = 1 }
-    , player2 = { pos = vec (boardWidth - paddleWidth) midY, score = 0, id = 2 }
-    , ball =
-        { pos = vec ((boardWidth / 2) - (ballSize / 2)) ((boardHeight / 2) - (ballSize / 2))
-        , dir = vec 2 1 |> normalize |> scale 2.5
+    let
+        paddleMidY =
+            (Constants.boardHeight / 2) - (Constants.paddleHeight / 2)
+
+        ballMidX =
+            (Constants.boardWidth / 2) - (Constants.ballSize / 2)
+
+        ballMidY =
+            (Constants.boardHeight / 2) - (Constants.ballSize / 2)
+    in
+    { player1 =
+        { pos = vec 0 paddleMidY
+        , score = 0
+        , id = "lorem"
         }
-    , isRoundFinished = False
+    , player2 =
+        { pos = vec (Constants.boardWidth - Constants.paddleWidth) paddleMidY
+        , score = 0
+        , id = "ipsum"
+        }
+    , ball =
+        { pos = vec ballMidX ballMidY
+        , dir = vec 2 1 |> normalize |> scale Constants.ballMovementFactor
+        }
     , pressedKeys = []
     }
 
@@ -102,7 +91,7 @@ capPlayerPos newPos =
             0
 
         max =
-            boardHeight - paddleHeight
+            Constants.boardHeight - Constants.paddleHeight
 
         y =
             getY newPos
@@ -126,14 +115,14 @@ updatePlayerPos operation player =
     { player | pos = capPlayerPos newPos }
 
 
-isGameFinished : Model -> Maybe Int
+isGameFinished : Model -> Maybe String
 isGameFinished model =
     let
         ballX =
             getX model.ball.pos
 
         finished =
-            ballX + ballSize < 0 || ballX > boardWidth
+            ballX + Constants.ballSize < 0 || ballX > Constants.boardWidth
     in
     if finished then
         if ballX > 0 then
@@ -153,19 +142,19 @@ detectPaddleColision ball player =
             getX ball.pos
 
         xHitsPaddle =
-            ballX <= paddleWidth || ballX + ballSize >= boardWidth - paddleWidth
+            ballX <= Constants.paddleWidth || ballX + Constants.ballSize >= Constants.boardWidth - Constants.paddleWidth
 
         ballTop =
             getY ball.pos
 
         ballBottom =
-            getY ball.pos + ballSize
+            getY ball.pos + Constants.ballSize
 
         paddleTop =
             getY player.pos
 
         paddleBottom =
-            getY player.pos + paddleHeight
+            getY player.pos + Constants.paddleHeight
 
         yWithinPaddle =
             ballBottom >= paddleTop && ballTop <= paddleBottom
@@ -180,10 +169,10 @@ reflectAgainstPlayer ball player =
             ball.pos
 
         ballDiameter =
-            vec (ballSize / 2) (ballSize / 2)
+            vec (Constants.ballSize / 2) (Constants.ballSize / 2)
 
         paddleDiameter =
-            vec (paddleWidth / 2) (paddleHeight / 2)
+            vec (Constants.paddleWidth / 2) (Constants.paddleHeight / 2)
 
         ballCenter =
             add ballPos ballDiameter
@@ -192,7 +181,7 @@ reflectAgainstPlayer ball player =
             add player.pos paddleDiameter
 
         newDir =
-            sub paddleCenter ballCenter |> normalize |> scale 2.5
+            sub paddleCenter ballCenter |> normalize |> scale Constants.ballMovementFactor
     in
     newDir
 
@@ -207,7 +196,7 @@ updateBall ball player1 player2 =
             getY ball.pos
 
         collidesWithWall =
-            ballY <= 0 || ballY + ballSize >= boardHeight
+            ballY <= 0 || ballY + Constants.ballSize >= Constants.boardHeight
 
         ballDir =
             if collidesWithWall then
@@ -268,11 +257,17 @@ update msg model =
                         wasd =
                             Keyboard.Arrows.wasd model.pressedKeys
 
+                        player1MovementY =
+                            Constants.paddleMovementFactor * toFloat wasd.y
+
                         newPlayer1 =
-                            updatePlayerPos (add (vec 0 (paddleMovementFactor * toFloat wasd.y))) model.player1
+                            updatePlayerPos (add (vec 0 player1MovementY)) model.player1
+
+                        player2MovementY =
+                            Constants.paddleMovementFactor * toFloat arrows.y
 
                         newPlayer2 =
-                            updatePlayerPos (add (vec 0 (paddleMovementFactor * toFloat arrows.y))) model.player2
+                            updatePlayerPos (add (vec 0 player2MovementY)) model.player2
 
                         newBall =
                             updateBall model.ball model.player1 model.player2
@@ -309,14 +304,14 @@ view : Model -> Html Msg
 view model =
     div []
         [ svg
-            [ width (String.fromInt boardWidth)
-            , height (String.fromInt boardHeight)
+            [ width (String.fromInt Constants.boardWidth)
+            , height (String.fromInt Constants.boardHeight)
             , viewBox
                 (join
                     [ 0
                     , 0
-                    , boardWidth
-                    , boardHeight
+                    , Constants.boardWidth
+                    , Constants.boardHeight
                     ]
                 )
             ]
@@ -325,15 +320,15 @@ view model =
             , renderPaddle model.player1
             , renderPaddle model.player2
             , renderScore "50" model.player1
-            , renderScore (String.fromFloat (boardWidth - 50)) model.player2
+            , renderScore (String.fromFloat (Constants.boardWidth - 50)) model.player2
             ]
         ]
 
 
 renderBackground =
     rect
-        [ width (String.fromInt boardWidth)
-        , height (String.fromInt boardHeight)
+        [ width (String.fromInt Constants.boardWidth)
+        , height (String.fromInt Constants.boardHeight)
         , x (String.fromInt 0)
         , y (String.fromInt 0)
         ]
@@ -343,8 +338,8 @@ renderBackground =
 renderBall : Vec -> Html Msg
 renderBall pos =
     rect
-        [ width (String.fromInt ballSize)
-        , height (String.fromInt ballSize)
+        [ width (String.fromInt Constants.ballSize)
+        , height (String.fromInt Constants.ballSize)
         , x (String.fromFloat (getX pos))
         , y (String.fromFloat (getY pos))
         , fill "red"
@@ -355,8 +350,8 @@ renderBall pos =
 renderPaddle : Player -> Html Msg
 renderPaddle player =
     rect
-        [ width (String.fromInt paddleWidth)
-        , height (String.fromInt paddleHeight)
+        [ width (String.fromInt Constants.paddleWidth)
+        , height (String.fromInt Constants.paddleHeight)
         , x (String.fromFloat (getX player.pos))
         , y (String.fromFloat (getY player.pos))
         , fill "white"
