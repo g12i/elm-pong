@@ -1,4 +1,4 @@
-module Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, scale, setX, setY, sub, vec)
+module Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, rotate, scale, setX, setY, sub, vec)
 
 
 type alias Vec =
@@ -55,6 +55,11 @@ invertX a =
 invertY : Vec -> Vec
 invertY a =
     { x = a.x, y = a.y * -1 }
+
+
+rotate : Float -> Vec -> Vec
+rotate angle a =
+    { x = a.x * cos angle, y = a.y * sin angle }
 
 
 normalize : Vec -> Vec

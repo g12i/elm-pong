@@ -30,8 +30,8 @@ ballSize =
 
 
 paddleMovementFactor =
-    -2.25
+    4
 
 
 ballMovementFactor =
-    2.75
+    1.25

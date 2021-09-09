@@ -5,12 +5,12 @@ import Browser.Events
 import Color
 import Constants
 import Game.TwoD as Game
-import Game.TwoD.Camera as Camera exposing (Camera)
+import Game.TwoD.Camera as Camera
 import Game.TwoD.Render as Render exposing (Renderable, circle, rectangle)
-import Html exposing (Html, div)
+import Html exposing (Html, div, text)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
-import Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, scale, setY, sub, vec)
+import Vector exposing (Vec, add, getX, getY, invertX, invertY, scale, setY, vec)
 
 
 main =
@@ -64,7 +64,7 @@ initModel _ =
         }
     , ball =
         { pos = vec 0 0
-        , dir = vec 2 0 |> normalize |> scale Constants.ballMovementFactor
+        , dir = vec 3 1 |> scale Constants.ballMovementFactor
         , radius = Constants.ballSize / 2
         }
     , pressedKeys = []
@@ -149,22 +149,22 @@ detectPaddleColision ball player =
             getY ball.pos - (ball.radius / 2)
 
         paddleTop =
-            getY player.pos + Constants.paddleHeight
+            getY player.pos + (Constants.paddleHeight / 2)
 
         paddleBottom =
-            getY player.pos - Constants.paddleHeight
+            getY player.pos - (Constants.paddleHeight / 2)
 
         yWithinPaddle =
-            ballBottom >= paddleBottom && ballTop <= paddleTop
+            ballBottom > paddleBottom && ballTop < paddleTop
     in
-    Debug.log "xHitsPaddle" xHitsPaddle && yWithinPaddle
+    xHitsPaddle && yWithinPaddle
 
 
 reflectAgainstPlayer : Ball -> Player -> Vec
-reflectAgainstPlayer ball player =
+reflectAgainstPlayer ball _ =
     let
         newDir =
-            sub player.pos ball.pos |> normalize |> scale Constants.ballMovementFactor
+            invertX ball.dir |> scale Constants.ballMovementFactor
     in
     newDir
 
@@ -232,13 +232,13 @@ updatePositions model =
             Keyboard.Arrows.wasd model.pressedKeys
 
         player1MovementY =
-            Constants.paddleMovementFactor * toFloat wasd.y * -1
+            Constants.paddleMovementFactor * toFloat wasd.y
 
         newPlayer1 =
             updatePlayerPos (add (vec 0 player1MovementY)) model.leftPlayer
 
         player2MovementY =
-            Constants.paddleMovementFactor * toFloat arrows.y * -1
+            Constants.paddleMovementFactor * toFloat arrows.y
 
         newPlayer2 =
             updatePlayerPos (add (vec 0 player2MovementY)) model.rightPlayer
@@ -269,7 +269,7 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ Sub.map KeyMsg Keyboard.subscriptions
         , Browser.Events.onAnimationFrame (\_ -> Tick)
@@ -280,24 +280,19 @@ subscriptions model =
 -- VIEW
 
 
-join : List Int -> String
-join list =
-    String.concat
-        (List.map
-            (\a -> String.fromInt a ++ " ")
-            list
-        )
-
-
 view : Model -> Html Msg
 view model =
-    Game.renderCentered { time = 0, camera = Camera.fixedArea (Constants.boardWidth * Constants.boardHeight) ( 0, 0 ), size = ( Constants.boardWidth, Constants.boardHeight ) }
-        [ renderBall model.ball
-        , Render.shape rectangle { color = Color.green, position = ( -400, 0 ), size = ( 800, 1 ) }
-        , Render.shape rectangle { color = Color.green, position = ( 0, -300 ), size = ( 1, 600 ) }
-        , renderPaddle model.leftPlayer.pos
-        , renderPaddle model.rightPlayer.pos
-        , renderBackground
+    div []
+        [ text (String.fromInt model.leftPlayer.score)
+        , text (String.fromInt model.rightPlayer.score)
+        , Game.renderCentered { time = 0, camera = Camera.fixedArea (Constants.boardWidth * Constants.boardHeight) ( 0, 0 ), size = ( Constants.boardWidth, Constants.boardHeight ) }
+            [ renderBall model.ball
+            , renderPaddle model.leftPlayer.pos
+            , renderPaddle model.rightPlayer.pos
+            , Render.shape rectangle { color = Color.rgb 0.2 0.2 0.2, position = ( Constants.boardWidth / -2, 0 ), size = ( Constants.boardWidth, 1 ) }
+            , Render.shape rectangle { color = Color.rgb 0.2 0.2 0.2, position = ( 0, Constants.boardHeight / -2 ), size = ( 1, Constants.boardWidth ) }
+            , renderBackground
+            ]
         ]
 
 
@@ -317,10 +312,7 @@ view model =
 --                     ]
 --                 )
 --             ]
---             [ renderBackground
---             , renderBall model.ball.pos
---             , renderPaddle model.player1.pos
---             , renderPaddle model.player2.pos
+--             [
 --             , renderScore 50 model.player1.score
 --             , renderScore (Constants.boardWidth - 50) model.player2.score
 --             ]
