@@ -2,13 +2,15 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Events
+import Color
 import Constants
+import Game.TwoD as Game
+import Game.TwoD.Camera as Camera exposing (Camera)
+import Game.TwoD.Render as Render exposing (Renderable, circle, rectangle)
 import Html exposing (Html, div)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
-import Svg exposing (rect, svg)
-import Svg.Attributes exposing (fill, height, viewBox, width, x, y)
-import Vector exposing (Vec, add, getX, getY, invertY, normalize, scale, setY, sub, vec)
+import Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, scale, setY, sub, vec)
 
 
 main =
@@ -43,28 +45,25 @@ type alias Model =
 initModel : () -> Model
 initModel _ =
     let
-        paddleMidY =
-            (Constants.boardHeight / 2) - (Constants.paddleHeight / 2)
+        player1Pos =
+            vec (Constants.boardWidth / -2) 0
 
-        ballMidX =
-            (Constants.boardWidth / 2) - (Constants.ballSize / 2)
-
-        ballMidY =
-            (Constants.boardHeight / 2) - (Constants.ballSize / 2)
+        player2Pos =
+            vec (Constants.boardWidth / 2) 0
     in
     { player1 =
-        { pos = vec 0 paddleMidY
+        { pos = player1Pos
         , score = 0
         , id = "lorem"
         }
     , player2 =
-        { pos = vec (Constants.boardWidth - Constants.paddleWidth) paddleMidY
+        { pos = player2Pos
         , score = 0
         , id = "ipsum"
         }
     , ball =
-        { pos = vec ballMidX ballMidY
-        , dir = vec 2 1 |> normalize |> scale Constants.ballMovementFactor
+        { pos = vec 0 0
+        , dir = vec 2 0 |> normalize |> scale Constants.ballMovementFactor
         }
     , pressedKeys = []
     }
@@ -88,10 +87,10 @@ capPlayerPos : Vec -> Vec
 capPlayerPos newPos =
     let
         min =
-            0
+            Constants.boardHeight / -2
 
         max =
-            Constants.boardHeight - Constants.paddleHeight
+            Constants.boardHeight / 2 - Constants.paddleHeight
 
         y =
             getY newPos
@@ -122,7 +121,9 @@ isGameFinished model =
             getX model.ball.pos
 
         finished =
-            ballX + Constants.ballSize < 0 || ballX > Constants.boardWidth
+            False
+
+        -- ballX + Constants.ballSize < 0 || ballX > Constants.boardWidth
     in
     if finished then
         if ballX > 0 then
@@ -142,7 +143,7 @@ detectPaddleColision ball player =
             getX ball.pos
 
         xHitsPaddle =
-            ballX <= Constants.paddleWidth || ballX + Constants.ballSize >= Constants.boardWidth - Constants.paddleWidth
+            abs ballX >= Constants.boardWidth / 2
 
         ballTop =
             getY ball.pos
@@ -159,7 +160,7 @@ detectPaddleColision ball player =
         yWithinPaddle =
             ballBottom >= paddleTop && ballTop <= paddleBottom
     in
-    xHitsPaddle && yWithinPaddle
+    Debug.log "xHitsPaddle" xHitsPaddle && Debug.log "yWithinPaddle" yWithinPaddle
 
 
 reflectAgainstPlayer : Ball -> Player -> Vec
@@ -181,7 +182,8 @@ reflectAgainstPlayer ball player =
             add player.pos paddleDiameter
 
         newDir =
-            sub paddleCenter ballCenter |> normalize |> scale Constants.ballMovementFactor
+            -- sub paddleCenter ballCenter |> normalize |> scale Constants.ballMovementFactor
+            invertX ball.dir
     in
     newDir
 
@@ -196,7 +198,7 @@ updateBall ball player1 player2 =
             getY ball.pos
 
         collidesWithWall =
-            ballY <= 0 || ballY + Constants.ballSize >= Constants.boardHeight
+            (ballY + (Constants.ballSize / 2)) >= Constants.boardHeight / 2 || ballY <= Constants.boardHeight / -2
 
         ballDir =
             if collidesWithWall then
@@ -246,13 +248,13 @@ updatePositions model =
             Keyboard.Arrows.wasd model.pressedKeys
 
         player1MovementY =
-            Constants.paddleMovementFactor * toFloat wasd.y
+            Constants.paddleMovementFactor * toFloat wasd.y * -1
 
         newPlayer1 =
             updatePlayerPos (add (vec 0 player1MovementY)) model.player1
 
         player2MovementY =
-            Constants.paddleMovementFactor * toFloat arrows.y
+            Constants.paddleMovementFactor * toFloat arrows.y * -1
 
         newPlayer2 =
             updatePlayerPos (add (vec 0 player2MovementY)) model.player2
@@ -305,68 +307,79 @@ join list =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ svg
-            [ width (String.fromInt Constants.boardWidth)
-            , height (String.fromInt Constants.boardHeight)
-            , viewBox
-                (join
-                    [ 0
-                    , 0
-                    , Constants.boardWidth
-                    , Constants.boardHeight
-                    ]
-                )
-            ]
-            [ renderBackground
-            , renderBall model.ball.pos
-            , renderPaddle model.player1.pos
-            , renderPaddle model.player2.pos
-            , renderScore 50 model.player1.score
-            , renderScore (Constants.boardWidth - 50) model.player2.score
-            ]
+    Game.renderCentered { time = 0, camera = Camera.fixedArea (Constants.boardWidth * Constants.boardHeight) ( 0, 0 ), size = ( Constants.boardWidth, Constants.boardHeight ) }
+        [ renderBall model.ball.pos
+        , Render.shape rectangle { color = Color.green, position = ( -400, 0 ), size = ( 800, 1 ) }
+        , Render.shape rectangle { color = Color.green, position = ( 0, -300 ), size = ( 1, 600 ) }
+        , renderPaddle model.player1.pos
+        , renderPaddle model.player2.pos
+        , renderBackground
         ]
+
+
+
+-- view : Model -> Html Msg
+-- view model =
+--     div []
+--         [ svg
+--             [ width (String.fromInt Constants.boardWidth)
+--             , height (String.fromInt Constants.boardHeight)
+--             , viewBox
+--                 (join
+--                     [ 0
+--                     , 0
+--                     , Constants.boardWidth
+--                     , Constants.boardHeight
+--                     ]
+--                 )
+--             ]
+--             [ renderBackground
+--             , renderBall model.ball.pos
+--             , renderPaddle model.player1.pos
+--             , renderPaddle model.player2.pos
+--             , renderScore 50 model.player1.score
+--             , renderScore (Constants.boardWidth - 50) model.player2.score
+--             ]
+--         ]
 
 
 renderBackground =
-    rect
-        [ width (String.fromInt Constants.boardWidth)
-        , height (String.fromInt Constants.boardHeight)
-        , x (String.fromInt 0)
-        , y (String.fromInt 0)
-        ]
-        []
+    Render.shape rectangle { color = Color.black, position = ( Constants.boardWidth / -2, Constants.boardHeight / -2 ), size = ( Constants.boardWidth, Constants.boardHeight ) }
 
 
-renderBall : Vec -> Html Msg
+renderBall : Vec -> Renderable
 renderBall pos =
-    rect
-        [ width (String.fromInt Constants.ballSize)
-        , height (String.fromInt Constants.ballSize)
-        , x (pos |> getX |> String.fromFloat)
-        , y (pos |> getY |> String.fromFloat)
-        , fill "red"
-        ]
-        []
+    Render.shape rectangle
+        { color = Color.red
+        , position = ( pos.x - Constants.ballSize / 2, pos.y - Constants.ballSize / 2 )
+        , size = ( Constants.ballSize, Constants.ballSize )
+        }
 
 
-renderPaddle : Vec -> Html Msg
+renderPaddle : Vec -> Renderable
 renderPaddle pos =
-    rect
-        [ width (String.fromInt Constants.paddleWidth)
-        , height (String.fromInt Constants.paddleHeight)
-        , x (pos |> getX |> String.fromFloat)
-        , y (pos |> getY |> String.fromFloat)
-        , fill "white"
-        ]
-        []
+    let
+        x =
+            if pos.x > 0 then
+                pos.x - Constants.paddleWidth
+
+            else
+                pos.x
+    in
+    Render.shape rectangle
+        { color = Color.white
+        , position = ( x, pos.y - Constants.paddleHeight / 2 )
+        , size = ( Constants.paddleWidth, Constants.paddleHeight )
+        }
 
 
-renderScore : Float -> Int -> Html Msg
-renderScore xCoord score =
-    Svg.text_
-        [ fill "white"
-        , x (String.fromFloat xCoord)
-        , y "50"
-        ]
-        [ Svg.text (String.fromInt score) ]
+
+--
+-- renderScore : Float -> Int -> Html Msg
+-- renderScore xCoord score =
+--     Svg.text_
+--         [ fill "white"
+--         , x (String.fromFloat xCoord)
+--         , y "50"
+--         ]
+--         [ Svg.text (String.fromInt score) ]
