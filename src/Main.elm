@@ -7,7 +7,7 @@ import Html exposing (Html, div)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
 import Svg exposing (rect, svg)
-import Svg.Attributes exposing (height, viewBox, width, x, y, fill)
+import Svg.Attributes exposing (fill, height, viewBox, width, x, y)
 import Vector exposing (Vec, add, getX, getY, invertY, normalize, scale, setY, sub, vec)
 
 
