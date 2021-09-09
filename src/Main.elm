@@ -3,12 +3,12 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Browser
 import Browser.Events
 import Constants
-import Html exposing (Html, div, pre)
+import Html exposing (Html, div)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
-import Svg exposing (circle, rect, svg)
-import Svg.Attributes exposing (..)
-import Vector exposing (Vec, add, getX, getY, invertX, invertY, normalize, scale, setY, sub, vec)
+import Svg exposing (rect, svg)
+import Svg.Attributes exposing (height, viewBox, width, x, y, fill)
+import Vector exposing (Vec, add, getX, getY, invertY, normalize, scale, setY, sub, vec)
 
 
 main =
