@@ -31,12 +31,13 @@ type alias Player =
 type alias Ball =
     { pos : Vec
     , dir : Vec
+    , radius : Float
     }
 
 
 type alias Model =
-    { player1 : Player
-    , player2 : Player
+    { leftPlayer : Player
+    , rightPlayer : Player
     , ball : Ball
     , pressedKeys : List Key
     }
@@ -51,19 +52,20 @@ initModel _ =
         player2Pos =
             vec (Constants.boardWidth / 2) 0
     in
-    { player1 =
+    { leftPlayer =
         { pos = player1Pos
         , score = 0
-        , id = "lorem"
+        , id = "LEFT"
         }
-    , player2 =
+    , rightPlayer =
         { pos = player2Pos
         , score = 0
-        , id = "ipsum"
+        , id = "RIGHT"
         }
     , ball =
         { pos = vec 0 0
         , dir = vec 2 0 |> normalize |> scale Constants.ballMovementFactor
+        , radius = Constants.ballSize / 2
         }
     , pressedKeys = []
     }
@@ -121,16 +123,14 @@ isGameFinished model =
             getX model.ball.pos
 
         finished =
-            False
-
-        -- ballX + Constants.ballSize < 0 || ballX > Constants.boardWidth
+            abs ballX + model.ball.radius * 2 >= Constants.boardWidth / 2
     in
     if finished then
         if ballX > 0 then
-            Just model.player1.id
+            Just model.leftPlayer.id
 
         else
-            Just model.player2.id
+            Just model.rightPlayer.id
 
     else
         Nothing
@@ -139,58 +139,42 @@ isGameFinished model =
 detectPaddleColision : Ball -> Player -> Bool
 detectPaddleColision ball player =
     let
-        ballX =
-            getX ball.pos
-
         xHitsPaddle =
-            abs ballX >= Constants.boardWidth / 2
+            abs (getX ball.pos) + ball.radius >= abs (getX player.pos) - Constants.paddleWidth
 
         ballTop =
-            getY ball.pos
+            getY ball.pos + (ball.radius / 2)
 
         ballBottom =
-            getY ball.pos + Constants.ballSize
+            getY ball.pos - (ball.radius / 2)
 
         paddleTop =
-            getY player.pos
-
-        paddleBottom =
             getY player.pos + Constants.paddleHeight
 
+        paddleBottom =
+            getY player.pos - Constants.paddleHeight
+
         yWithinPaddle =
-            ballBottom >= paddleTop && ballTop <= paddleBottom
+            ballBottom >= paddleBottom && ballTop <= paddleTop
     in
-    Debug.log "xHitsPaddle" xHitsPaddle && Debug.log "yWithinPaddle" yWithinPaddle
+    Debug.log "xHitsPaddle" xHitsPaddle && yWithinPaddle
 
 
 reflectAgainstPlayer : Ball -> Player -> Vec
 reflectAgainstPlayer ball player =
     let
-        ballPos =
-            ball.pos
-
-        ballDiameter =
-            vec (Constants.ballSize / 2) (Constants.ballSize / 2)
-
-        paddleDiameter =
-            vec (Constants.paddleWidth / 2) (Constants.paddleHeight / 2)
-
-        ballCenter =
-            add ballPos ballDiameter
-
-        paddleCenter =
-            add player.pos paddleDiameter
-
         newDir =
-            -- sub paddleCenter ballCenter |> normalize |> scale Constants.ballMovementFactor
-            invertX ball.dir
+            sub player.pos ball.pos |> normalize |> scale Constants.ballMovementFactor
     in
     newDir
 
 
-updateBall : Ball -> Player -> Player -> Ball
-updateBall ball player1 player2 =
+updateBall : Model -> Ball
+updateBall model =
     let
+        ball =
+            model.ball
+
         collidesWithPlayer =
             detectPaddleColision ball
 
@@ -204,11 +188,11 @@ updateBall ball player1 player2 =
             if collidesWithWall then
                 invertY ball.dir
 
-            else if collidesWithPlayer player1 then
-                reflectAgainstPlayer ball player1
+            else if getX ball.pos < 0 && collidesWithPlayer model.leftPlayer then
+                reflectAgainstPlayer ball model.leftPlayer
 
-            else if collidesWithPlayer player2 then
-                reflectAgainstPlayer ball player2
+            else if getX ball.pos > 0 && collidesWithPlayer model.rightPlayer then
+                reflectAgainstPlayer ball model.rightPlayer
 
             else
                 ball.dir
@@ -230,12 +214,12 @@ finishRound scoredPlayerId model =
                 player
 
         newPlayer1 =
-            model.player1 |> updatePlayerPos (\_ -> freshModel.player1.pos) |> updateIfScored
+            model.leftPlayer |> updatePlayerPos (\_ -> freshModel.leftPlayer.pos) |> updateIfScored
 
         newPlayer2 =
-            model.player2 |> updatePlayerPos (\_ -> freshModel.player2.pos) |> updateIfScored
+            model.rightPlayer |> updatePlayerPos (\_ -> freshModel.rightPlayer.pos) |> updateIfScored
     in
-    { model | player1 = newPlayer1, player2 = newPlayer2, ball = freshModel.ball }
+    { model | leftPlayer = newPlayer1, rightPlayer = newPlayer2, ball = freshModel.ball }
 
 
 updatePositions : Model -> Model
@@ -251,18 +235,18 @@ updatePositions model =
             Constants.paddleMovementFactor * toFloat wasd.y * -1
 
         newPlayer1 =
-            updatePlayerPos (add (vec 0 player1MovementY)) model.player1
+            updatePlayerPos (add (vec 0 player1MovementY)) model.leftPlayer
 
         player2MovementY =
             Constants.paddleMovementFactor * toFloat arrows.y * -1
 
         newPlayer2 =
-            updatePlayerPos (add (vec 0 player2MovementY)) model.player2
+            updatePlayerPos (add (vec 0 player2MovementY)) model.rightPlayer
 
         newBall =
-            updateBall model.ball model.player1 model.player2
+            updateBall model
     in
-    { model | player1 = newPlayer1, player2 = newPlayer2, ball = newBall }
+    { model | leftPlayer = newPlayer1, rightPlayer = newPlayer2, ball = newBall }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -308,11 +292,11 @@ join list =
 view : Model -> Html Msg
 view model =
     Game.renderCentered { time = 0, camera = Camera.fixedArea (Constants.boardWidth * Constants.boardHeight) ( 0, 0 ), size = ( Constants.boardWidth, Constants.boardHeight ) }
-        [ renderBall model.ball.pos
+        [ renderBall model.ball
         , Render.shape rectangle { color = Color.green, position = ( -400, 0 ), size = ( 800, 1 ) }
         , Render.shape rectangle { color = Color.green, position = ( 0, -300 ), size = ( 1, 600 ) }
-        , renderPaddle model.player1.pos
-        , renderPaddle model.player2.pos
+        , renderPaddle model.leftPlayer.pos
+        , renderPaddle model.rightPlayer.pos
         , renderBackground
         ]
 
@@ -347,12 +331,12 @@ renderBackground =
     Render.shape rectangle { color = Color.black, position = ( Constants.boardWidth / -2, Constants.boardHeight / -2 ), size = ( Constants.boardWidth, Constants.boardHeight ) }
 
 
-renderBall : Vec -> Renderable
-renderBall pos =
-    Render.shape rectangle
+renderBall : Ball -> Renderable
+renderBall ball =
+    Render.shape circle
         { color = Color.red
-        , position = ( pos.x - Constants.ballSize / 2, pos.y - Constants.ballSize / 2 )
-        , size = ( Constants.ballSize, Constants.ballSize )
+        , position = ( getX ball.pos - ball.radius, getY ball.pos - ball.radius )
+        , size = ( ball.radius * 2, ball.radius * 2 )
         }
 
 
