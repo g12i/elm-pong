@@ -6,10 +6,12 @@ import Color
 import Constants
 import Game.TwoD as Game
 import Game.TwoD.Camera as Camera
-import Game.TwoD.Render as Render exposing (Renderable, circle, rectangle)
-import Html exposing (Html, div, text)
+import Game.TwoD.Render as Render exposing (..)
+import Html exposing (Html, div, span, strong, text)
+import Html.Attributes exposing (style)
 import Keyboard exposing (Key(..))
 import Keyboard.Arrows
+import String exposing (concat)
 import Vector exposing (Vec, add, getX, getY, invertX, invertY, scale, setY, vec)
 
 
@@ -123,7 +125,7 @@ isGameFinished model =
             getX model.ball.pos
 
         finished =
-            abs ballX + model.ball.radius * 2 >= Constants.boardWidth / 2
+            abs ballX + model.ball.radius >= Constants.boardWidth / 2
     in
     if finished then
         if ballX > 0 then
@@ -155,18 +157,9 @@ detectPaddleColision ball player =
             getY player.pos - (Constants.paddleHeight / 2)
 
         yWithinPaddle =
-            ballBottom > paddleBottom && ballTop < paddleTop
+            ballTop > paddleBottom && ballBottom < paddleTop
     in
     xHitsPaddle && yWithinPaddle
-
-
-reflectAgainstPlayer : Ball -> Player -> Vec
-reflectAgainstPlayer ball _ =
-    let
-        newDir =
-            invertX ball.dir |> scale Constants.ballMovementFactor
-    in
-    newDir
 
 
 updateBall : Model -> Ball
@@ -186,13 +179,13 @@ updateBall model =
 
         ballDir =
             if collidesWithWall then
-                invertY ball.dir
+                invertY ball.dir |> scale Constants.ballMovementFactor
 
-            else if getX ball.pos < 0 && collidesWithPlayer model.leftPlayer then
-                reflectAgainstPlayer ball model.leftPlayer
+            else if getX ball.dir < 0 && collidesWithPlayer model.leftPlayer then
+                invertX ball.dir |> scale Constants.ballMovementFactor
 
-            else if getX ball.pos > 0 && collidesWithPlayer model.rightPlayer then
-                reflectAgainstPlayer ball model.rightPlayer
+            else if getX ball.dir > 0 && collidesWithPlayer model.rightPlayer then
+                invertX ball.dir |> scale Constants.ballMovementFactor
 
             else
                 ball.dir
@@ -218,8 +211,21 @@ finishRound scoredPlayerId model =
 
         newPlayer2 =
             model.rightPlayer |> updatePlayerPos (\_ -> freshModel.rightPlayer.pos) |> updateIfScored
+
+        freshBall =
+            freshModel.ball
+
+        newBallDir =
+            if scoredPlayerId == "LEFT" then
+                invertX freshBall.dir
+
+            else
+                freshBall.dir
+
+        newBall =
+            { freshBall | dir = newBallDir }
     in
-    { model | leftPlayer = newPlayer1, rightPlayer = newPlayer2, ball = freshModel.ball }
+    { model | leftPlayer = newPlayer1, rightPlayer = newPlayer2, ball = newBall }
 
 
 updatePositions : Model -> Model
@@ -282,43 +288,61 @@ subscriptions _ =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ text (String.fromInt model.leftPlayer.score)
-        , text (String.fromInt model.rightPlayer.score)
-        , Game.renderCentered { time = 0, camera = Camera.fixedArea (Constants.boardWidth * Constants.boardHeight) ( 0, 0 ), size = ( Constants.boardWidth, Constants.boardHeight ) }
-            [ renderBall model.ball
-            , renderPaddle model.leftPlayer.pos
-            , renderPaddle model.rightPlayer.pos
-            , Render.shape rectangle { color = Color.rgb 0.2 0.2 0.2, position = ( Constants.boardWidth / -2, 0 ), size = ( Constants.boardWidth, 1 ) }
-            , Render.shape rectangle { color = Color.rgb 0.2 0.2 0.2, position = ( 0, Constants.boardHeight / -2 ), size = ( 1, Constants.boardWidth ) }
-            , renderBackground
+    div
+        [ style "display" "grid"
+        , style "grid-template-columns" "1fr 1fr"
+        , style "font-family" "-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Oxygen-Sans,Ubuntu,Cantarell,\"Helvetica Neue\",sans-serif"
+        , style "grid-template-rows" "50px 50px auto"
+        , style "gap" "0px 0px"
+        , style "grid-template-areas" "\"title title\" \"left-score right-score\" \"board board\""
+        ]
+        [ div
+            [ style "grid-area" "board"
+            ]
+            [ Game.renderCentered { time = 0, camera = Camera.fixedArea (Constants.boardWidth * Constants.boardHeight) ( 0, 0 ), size = ( Constants.boardWidth, Constants.boardHeight ) }
+                [ renderBall model.ball
+                , renderPaddle model.leftPlayer.pos
+                , renderPaddle model.rightPlayer.pos
+                , Render.shape rectangle { color = Color.rgb 0.2 0.2 0.2, position = ( Constants.boardWidth / -2, 0 ), size = ( Constants.boardWidth, 1 ) }
+                , Render.shape rectangle { color = Color.rgb 0.2 0.2 0.2, position = ( 0, Constants.boardHeight / -2 ), size = ( 1, Constants.boardWidth ) }
+                , renderBackground
+                ]
+            ]
+        , div
+            [ style "grid-area" "title"
+            , style "display" "flex"
+            , style "align-items" "center"
+            , style "justify-content" "center"
+            , style "font-size" "24px"
+            ]
+            [ text "ELM Pong"
+            ]
+        , div
+            [ style "grid-area" "left-score"
+            , style "display" "flex"
+            , style "align-items" "center"
+            , style "justify-content" "center"
+            ]
+            [ span []
+                [ text "Player 1: "
+                , strong [] [ text (String.fromInt model.leftPlayer.score) ]
+                ]
+            ]
+        , div
+            [ style "grid-area" "right-score"
+            , style "display" "flex"
+            , style "align-items" "center"
+            , style "justify-content" "center"
+            ]
+            [ span []
+                [ text "Player 2: "
+                , strong [] [ text (String.fromInt model.rightPlayer.score) ]
+                ]
             ]
         ]
 
 
-
--- view : Model -> Html Msg
--- view model =
---     div []
---         [ svg
---             [ width (String.fromInt Constants.boardWidth)
---             , height (String.fromInt Constants.boardHeight)
---             , viewBox
---                 (join
---                     [ 0
---                     , 0
---                     , Constants.boardWidth
---                     , Constants.boardHeight
---                     ]
---                 )
---             ]
---             [
---             , renderScore 50 model.player1.score
---             , renderScore (Constants.boardWidth - 50) model.player2.score
---             ]
---         ]
-
-
+renderBackground : Renderable
 renderBackground =
     Render.shape rectangle { color = Color.black, position = ( Constants.boardWidth / -2, Constants.boardHeight / -2 ), size = ( Constants.boardWidth, Constants.boardHeight ) }
 
@@ -347,15 +371,3 @@ renderPaddle pos =
         , position = ( x, pos.y - Constants.paddleHeight / 2 )
         , size = ( Constants.paddleWidth, Constants.paddleHeight )
         }
-
-
-
---
--- renderScore : Float -> Int -> Html Msg
--- renderScore xCoord score =
---     Svg.text_
---         [ fill "white"
---         , x (String.fromFloat xCoord)
---         , y "50"
---         ]
---         [ Svg.text (String.fromInt score) ]
